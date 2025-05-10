@@ -1,0 +1,42 @@
+name: Python CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run tests
+      run: |
+        python manage.py test
+        
+    - name: Semgrep SAST
+      run: |
+        curl -s https://semgrep.dev/install.sh | bash
+        semgrep --config=https://semgrep.dev/p/ci --quiet --json > semgrep_results.json
+        cat semgrep_results.json
+
+    - name: OWASP ZAP
+      uses: docker://owasp/zap2docker-stable
+      with:
+        entrypoint: "/bin/bash -c 'zap-baseline.py -t http://localhost:8000 -g -r zap_report.html'"
